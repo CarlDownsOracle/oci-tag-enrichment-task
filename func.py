@@ -35,13 +35,15 @@ tag_assembly_key = os.getenv('TAG_ASSEMBLY_KEY', 'tags')
 tag_position_key = os.getenv('TAG_POSITION_KEY', None)
 
 # OCI supports 'freeform', 'defined' and 'system' tag types.  The INCLUDE parameters determine which tag types the
-# function will include.  The INCLUDE_EMPTY_TAGS parameter determines whether empty 'freeform', 'defined' and 'system'
-# tag dictionaries are to be included when empty.
+# function will include.  
 
-include_freeform_tags = eval(os.getenv('INCLUDE_FREEFORM_TAGS', "True"))
-include_defined_tags = eval(os.getenv('INCLUDE_DEFINED_TAGS', "True"))
-include_system_tags = eval(os.getenv('INCLUDE_SYSTEM_TAGS', "True"))
-include_empty_tags = eval(os.getenv('INCLUDE_EMPTY_TAGS', "False"))
+include_tag_types = os.getenv('INCLUDE_TAG_TYPES', 'freeform,defined,system')
+include_tag_types = re.split(' |,', include_tag_types)
+
+# The INCLUDE_EMPTY_TAGS_TYPES parameter determines whether 'freeform', 'defined' and 'system' tag dictionaries 
+# are to be included when there are no tags of that type associated with the OCID.
+
+include_empty_tag_types = eval(os.getenv('INCLUDE_EMPTY_TAGS_TYPES', "False"))
 
 # Set all registered loggers to the configured log_level
 
@@ -200,26 +202,24 @@ def retrieve_ocid_tags(target_ocid):
 
             logging.debug(f'resource_summary / {resource_summary}')
 
-            collect_tags(tag_object, 'freeform', include_freeform_tags, resource_summary.freeform_tags)
-            collect_tags(tag_object, 'defined', include_defined_tags, resource_summary.defined_tags)
-            collect_tags(tag_object, 'system', include_system_tags, resource_summary.system_tags)
+            collect_tags(tag_object, 'freeform', resource_summary.freeform_tags)
+            collect_tags(tag_object, 'defined', resource_summary.defined_tags)
+            collect_tags(tag_object, 'system', resource_summary.system_tags)
 
     logging.debug(f'retrieved / ocid / {target_ocid} / tags / {tag_object}')
     return tag_object
 
 
-def collect_tags(dictionary, tag_type_key, include_this_tag_type, results):
+def collect_tags(dictionary, tag_type, results):
     """
     Adds the tag results to the dictionary based on configuration rules.
     """
 
-    if include_this_tag_type is False:
-        return
+    if tag_type in include_tag_types:
+        if not results and include_empty_tag_types is False:
+            return
 
-    if not results and include_empty_tags is False:
-        return
-
-    dictionary[tag_type_key] = results
+        dictionary[tag_type] = results
 
 
 def get_dictionary_value(dictionary: dict, target_key: str):
