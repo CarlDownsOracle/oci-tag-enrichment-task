@@ -14,64 +14,49 @@ from fdk import response
 from oci.config import from_file
 
 # -------------------------------------------
-# Module Variables
+# Configurable Variables
 # -------------------------------------------
 
-"""
-This OCI Function Task is designed to enrich a given payload by retrieving and adding OCI tags associated
-with OCIDs present in the event.  The task by default will target all OCID keys present in payload.  
-Optionally, you can specify a target list of OCID types to include.
-"""
+# This OCI Function Task is designed to enrich a given payload by retrieving and adding OCI tags associated
+# with OCIDs present in the event.  The task by default will target all OCID keys present in payload.
+# Optionally, you can specify a target list of OCID types to include.
 
 include_all_ocids = eval(os.getenv('INCLUDE_TAGS_FOR_ALL_OCIDS', "True"))
 
-"""
-To target specific OCID keys, configure TARGET_OCID_KEYS with a comma-separated list of 
-OCID keys (l-values).  The tags for each corresponding OCID, if present in the payload, will be 
-retrieved and added.  The default value is a sampling of some well-known OCID keys but is by no means exhaustive.
-"""
+# To target specific OCID keys, configure TARGET_OCID_KEYS with a comma-separated list of
+# OCID keys (l-values).  The tags for each corresponding OCID, if present in the payload, will be
+# retrieved and added.  The default value is a sampling of some well-known OCID keys but is by no means exhaustive.
 
 target_ocid_keys = os.getenv('TARGET_OCID_KEYS', 'compartmentId,vcnId,subnetId,vnicId,vnicsubnetocid').split(',')
 
-"""
-The default for TARGET_OCID_KEYS above is a superset of keys that will never all be present in any one
-event.  TARGET_OCID_KEYS_WARN_IF_NOT_FOUND defaults to False to suppress log warnings for keys not found in 
-the event payload.
-"""
+# The default for TARGET_OCID_KEYS above is a superset of keys that will never all be present in any one
+# event.  TARGET_OCID_KEYS_WARN_IF_NOT_FOUND defaults to False to suppress log warnings for keys not found in
+# the event payload.
 
 target_ocid_keys_warn_if_not_found = eval(os.getenv('TARGET_OCID_KEYS_WARN_IF_NOT_FOUND', "False"))
 
-"""
-The TAG_ASSEMBLY_KEY is the l-value under which the tag collection will be added to the event payload.
-"""
+# The TAG_ASSEMBLY_KEY is the l-value under which the tag collection will be added to the event payload.
 
 tag_assembly_key = os.getenv('TAG_ASSEMBLY_KEY', 'tags')
 
-"""
-The TAG_POSITION_KEY is optional.  If defined, it tells us where in the event object to place the tag collection.
-"""
+# The TAG_POSITION_KEY is optional.  If defined, it tells us where in the event object to place the tag collection.
 
 tag_position_key = os.getenv('TAG_POSITION_KEY', None)
 
-"""
-OCI supports 'freeform', 'defined' and 'system' tag types.  The INCLUDE parameters determine which tag types the 
-function will include.  The INCLUDE_EMPTY_TAGS parameter determines whether empty 'freeform', 'defined' and 'system' 
-tag dictionaries are to be included when empty. 
-"""
+# OCI supports 'freeform', 'defined' and 'system' tag types.  The INCLUDE parameters determine which tag types the
+# function will include.  The INCLUDE_EMPTY_TAGS parameter determines whether empty 'freeform', 'defined' and 'system'
+# tag dictionaries are to be included when empty.
 
 include_freeform_tags = eval(os.getenv('INCLUDE_FREEFORM_TAGS', "True"))
 include_defined_tags = eval(os.getenv('INCLUDE_DEFINED_TAGS', "True"))
 include_system_tags = eval(os.getenv('INCLUDE_SYSTEM_TAGS', "True"))
 include_empty_tags = eval(os.getenv('INCLUDE_EMPTY_TAGS', "False"))
 
-"""
-Set all registered loggers to the configured log_level
-"""
+# Set all registered loggers to the configured log_level
 
 logging_level = os.getenv('LOGGING_LEVEL', 'INFO')
 loggers = [logging.getLogger()] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 [logger.setLevel(logging.getLevelName(logging_level)) for logger in loggers]
-
 
 # -------------------------------------------
 # Function Entry Point & Helpers
@@ -286,14 +271,6 @@ def local_test_mode(filename):
 
     logging.info("local testing completed")
 
-
-"""
-Local Debugging / outside the OCI Functions Service.
-    - install the OCI CLI
-    - set 'local_debugging_mode' = True
-    - change OCI_CLI_PROFILE to match a profile entry in ~/.oci/config 
-    - run module normally in python
-"""
 
 if __name__ == "__main__":
     profile_name = os.getenv('OCI_CLI_PROFILE', "not_configured")
