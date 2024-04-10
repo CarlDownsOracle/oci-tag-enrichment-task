@@ -27,10 +27,10 @@ include_all_ocids = eval(os.getenv('INCLUDE_TAGS_FOR_ALL_OCIDS', "True"))
 # OCID keys (l-values).  The tags for each corresponding OCID, if present in the payload, will be
 # retrieved and added.  The default value is a sampling of some well-known OCID keys but is by no means exhaustive.
 
-target_ocid_keys = os.getenv('TARGET_OCID_KEYS', 'compartmentId,vcnId,subnetId,vnicId,vnicsubnetocid').split(',')
+target_ocid_keys = os.getenv('TARGET_OCID_KEYS', 'compartmentId vcnId subnetId vnicId vnicsubnetocid').split(' ')
 
 # The default for TARGET_OCID_KEYS above is a superset of keys that will never all be present in any one
-# event.  TARGET_OCID_KEYS_WARN_IF_NOT_FOUND defaults to False to suppress log warnings for keys not found in
+# event.  If False, TARGET_OCID_KEYS_WARN_IF_NOT_FOUND suppress log warnings for keys not found in
 # the event payload.
 
 target_ocid_keys_warn_if_not_found = eval(os.getenv('TARGET_OCID_KEYS_WARN_IF_NOT_FOUND', "False"))
