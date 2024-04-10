@@ -95,10 +95,9 @@ that you will want to change.
 
 Target OCIDs can exist anywhere in the event payload, and will be found regardless of nested position.
 
-### What about Duplicate OCID Keys?
+### What about Performance?
 
-If the same target OCID key exists multiple times in an event payload, only the first one will be mapped.
-
+The results are cached when retrieved within the Function container using an LRU cache.
 
 ### Function Testing
 
@@ -120,76 +119,81 @@ passing in a simulated 'event' payload like so:
 
     echo -n '{"vcnId":"your-vcn-id-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
-You should see the same payload returned with `tags` added ... something like this:
+You should see the same payload returned with `tags` collection added ... something like this:
 
     {
-      "vcnId": "ocid1.vcn.oc1.iad....",
-      "tags": [
-          {
-              "key": "vcnId",
-              "id": "ocid1.vcn.oc1.iad....",
-              "freeform": {
-                 "VCN": "VCN-2023-12-19T19:10:27",
-                 "app-test": "working"
-              }
-          }
-      ]
+        "vcnId": "ocid1.vcn.oc1.iad....",
+        "tags": {
+            "ocid1.vcn.oc1.iad....": {
+                "freeform": {
+                    "VCN": "VCN-2024-03-01T20:57:32"
+                    "app-test": "working"
+                }
+            }
+        }
     }
 
-### Determining where to Place the Tags in the Payload 
+### Changing the Assembly Key
 
-If you want to position the tags somewhere other than at the top, you can set `TAG_POSITION_KEY`. 
-If not empty, `TAG_POSITION_KEY` tells us where in the nested event JSON object to place the tag collection. 
-if the position is found in the event and the position is a dictionary 
-that does not contain a 'tags' key, then the code adds the collection there using 
-`TAG_ASSEMBLY_KEY` as the key.  If position is an array, then the tag collection is appended.
+The l-value _tags_ can be changed.  Simply set `TAG_ASSEMBLY_KEY` to name it whatever you like.
+
+### Changing Placement in the Payload 
+
+If you want to position the tag collection somewhere other than at the top, you can set `TAG_POSITION_KEY`.
+If the `TAG_POSITION_KEY` position in your payload is a dictionary, the tag collection will be 
+added using `TAG_ASSEMBLY_KEY` as the position.  
 
 As an example, let's assume we have defined function configuration `TAG_POSITION_KEY` as `"compliance"`.   Now simulate
-a call with a payload that has that position in it:
+a call with a payload that has that position in it, declared as an object:
 
     echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": {}}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
-You'll get this back:
+So, this is what you get back when positioning within an existing object:
     
     {
-      "vcnId": "ocid1.vcn.oc1.iad....",
-      "compliance": {
-          "tags": [
-              {
-                  "key": "vcnId",
-                  "id": "ocid1.vcn.oc1.iad....",
-                  "freeform": {
-                     "VCN": "VCN-2023-12-19T19:10:27",
-                     "app-test": "working"
-                  }
-              }
-          ]
-      }
+        "vcnId": "ocid1.vcn.oc1.iad....",
+        "compliance": {
+            "tags": {
+                "ocid1.vcn.oc1.iad....": {
+                    "freeform": {
+                        "VCN": "VCN-2024-03-01T20:57:32"
+                        "app-test": "working"
+                    }
+                }
+            }
+        }
     }
 
-Positioning within a `"compliance"` an array:
+If the `TAG_POSITION_KEY` position is an array, then the tag collection is added as an object to the list. 
+Here is an example of positioning within as existing array:
 
-    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": []}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": ["something"]}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
-... yields this result.  Notice that `TAG_ASSEMBLY_KEY` is dropped off.
+... yields this result:
 
     {
-      "vcnId": "ocid1.vcn.oc1.iad....",
+        "vcnId": "ocid1.vcn.oc1.iad....",
         "compliance": [
+            "something",
             {
-                "key": "vcnId",
-                "id": "ocid1.vcn.oc1.iad....",
-                "freeform": {
-                     "VCN": "VCN-2023-12-19T19:10:27",
-                     "app-test": "working"
+                "tags": {
+                    "ocid1.vcn.oc1.iad....": {
+                        "freeform": {
+                            "VCN": "VCN-2024-03-01T20:57:32"
+                            "app-test": "working"
+                        }
+                    }
                 }
             }
         ]
     }
 
+If the `TAG_POSITION_KEY` position l-value is missing from the payload, an error is thrown.
+
+
 ## Service Connector Setup
 
-As a sample test scenario, let's write enriched VCN Flow Logs to Object Storage.
+As a sample test scenario, let's write tag-enriched `VCN Flow Logs` to an `Object Storage Bucket`.
 
 
 ![](images/sch-mapping.png)
@@ -211,7 +215,7 @@ As a sample test scenario, let's write enriched VCN Flow Logs to Object Storage.
 * Create a service connector instance in `tag-enrichment-comp`.
 * Configure it to:
   * Select VCN Flow Logs as Source
-  * Select Functions Task to process each event
+  * Select Functions Task and point to this Task Function
   * Select Object Storage as Target
 
 _NOTE: BE SURE TO ACCEPT THE POLICY UPDATES THE SERVICE CONNECTOR DIALOG OFFERS YOU!_
@@ -239,7 +243,7 @@ If the invocation logs show the search API is being successfully called for an O
 seeing an [auth issue](https://docs.oracle.com/en-us/iaas/Content/connector-hub/overview.htm#Authenti). Modify 
 your policy to grant the Function resource appropriate access. 
 
-### Task function is not adding the target OCID tags
+### Task function is not adding the target tags
 
 If you have `INCLUDE_TAGS_FOR_ALL_OCIDS` == `False` set, be sure you have the correct OCID `keys` (l-values) in 
 your `TARGET_OCID_KEYS` and that the delimiter is a comma with no spaces. Use the invocation logs to confirm that 
@@ -247,12 +251,9 @@ the function is searching for the OCID key.
 
 ### Task function is adding stale tags
 
-This function has a cache which it uses to avoid making unnecessary search API calls. You can clear the 
-cache by changing the function configuration which will cause the SCH to reload the Function container 
-... thus clearing the cache.
-
-If the cache continues to creating issues, perhaps try
-[replacing it with an expiring dictionary](https://pypi.org/project/expiring-dict/).  :-)
+This function has a cache which it uses to avoid making unnecessary search API calls. Tag values rarely change so
+the cache should not be an issue.  However, you can clear the cache by causing the Service Connector to restart 
+the Function container.  The easiest way to do that is to change a Fn Application configuration parameter.
 
 ----
 
@@ -262,28 +263,17 @@ Here are the supported variables.  The defaults are fine for most use cases.
 
 | Environment Variable               |                      Default                       | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                           |
 |------------------------------------|:--------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| INCLUDE_TAGS_FOR_ALL_OCIDS               |                        True                        | Target OCIDs can exist anywhere in the event JSON payload, regardless of nested position.  Simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The tags for each will be retrieved and added.                                                                                                                                                                                                             |
+| INCLUDE_TAGS_FOR_ALL_OCIDS         |                        True                        | Target OCIDs can exist anywhere in the event JSON payload, regardless of nested position.  Simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The tags for each will be retrieved and added.                                                                                                                                                                                                             |
 | TARGET_OCID_KEYS                   | compartmentId,vcnId,subnetId,vnicId,vnicsubnetocid | Target OCIDs can exist anywhere in the event JSON payload, regardless of nested position.  Simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The tags for each will be retrieved and added.                                                                                                                                                                                                             |
 | TARGET_OCID_KEYS_WARN_IF_NOT_FOUND |                       False                        | A superset of 'target_ocid_keys' may be declared to cover a wide variety of heterogeneous event types.  Default of False suppresses log warnings when a target OCID key is not found in the event payload.                                                                                                                                                                                                                        |
 | INCLUDE_FREEFORM_TAGS              |                        True                        | Determine whether 'freeform' tags should be included.                                                                                                                                                                                                                                                                                                                                                                             |
 | INCLUDE_DEFINED_TAGS               |                        True                        | Determine whether 'defined' tags should be included.                                                                                                                                                                                                                                                                                                                                                                              |
-| INCLUDE_SYSTEM_TAGS                |                        True                        | Determine whether 'system' tages should be included.                                                                                                                                                                                                                                                                                                                                                                              |
+| INCLUDE_SYSTEM_TAGS                |                        True                        | Determine whether 'system' tags should be included.                                                                                                                                                                                                                                                                                                                                                                               |
+| INCLUDE_EMPTY_TAGS                 |                       False                        | Determines whether empty tag dictionaries will be emitted for 'freeform', 'defined' or 'system' tag types when there are none found.  Downstream logic may expect to find these l-values even if empty. If that is the case, set this to False.                                                                                                                                                                                   |
 | TAG_ASSEMBLY_KEY                   |                        tags                        | The assembly key is the dictionary key used to add the tag collection to the event.                                                                                                                                                                                                                                                                                                                                               |
-| TAG_ASSEMBLY_OMIT_EMPTY_RESULTS    |                        True                        | Determines whether empty tag dictionaries will be emitted for 'freeform', 'defined' or 'system' tag types when there are none found.  Downstream logic may expect to find these l-values even if empty. If that is the case, set this to False.                                                                                                                                                                                   |
 | TAG_POSITION_KEY                   |                                                    | If not empty, `TAG_POSITION_KEY` tells us where in the nested event JSON object to place the tag collection.  If the position is found in the event and the position is a dictionary that does not already contain a `TAG_POSITION_KEY` key, the collection is added there using `TAG_ASSEMBLY_KEY` as the key.  If position is an array, then the tag collection is appended to the array and the `TAG_POSITION_KEY` is ignored. |
 | LOGGING_LEVEL                      |                        INFO                        | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                                                                                                                                                                                                   |
 
-----
-## **OCI** Related Workshops
-LiveLabs is the place to explore Oracle's products and services using workshops designed to 
-enhance your experience building and deploying applications on the Cloud and On-Premises.
-ur library of workshops cover everything from how to provision the world's first autonomous 
-database to setting up a webserver on Oracle's world-class OCI Generation 2 infrastructure, 
-machine learning and much more.  Use your existing Oracle Cloud account, 
-a [Free Tier](https://www.oracle.com/cloud/free/) account or a LiveLabs Cloud Account to build, test, 
-and deploy applications on Oracle's Cloud.
-
-Visit [LiveLabs](http://bit.ly/golivelabs) now to get started.  Workshops are added weekly, please visit frequently for new content.
 
 ## License
 Copyright (c) 2014, 2023 Oracle and/or its affiliates

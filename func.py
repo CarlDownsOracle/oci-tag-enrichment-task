@@ -137,7 +137,7 @@ def position_tags_on_event(event, tag_collection: dict):
                     position[tag_assembly_key] = tag_collection
                     return
             elif isinstance(position, list):
-                position += tag_collection
+                position.append({tag_assembly_key: tag_collection})
                 return
         else:
             raise RuntimeError(f'tag position noy found in payload / {tag_position_key}')
