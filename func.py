@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import oci
+import re
 from functools import lru_cache
 from fdk import response
 from oci.config import from_file
@@ -18,22 +19,12 @@ from oci.config import from_file
 # -------------------------------------------
 
 # This OCI Function Task is designed to enrich a given payload by retrieving and adding OCI tags associated
-# with OCIDs present in the event.  The task by default will target all OCID keys present in payload.
-# Optionally, you can specify a target list of OCID types to include.
+# with OCIDs present in the event. To target specific OCID keys, configure TARGET_OCID_KEYS as a
+# list of OCID keys (l-values).  The tags for each corresponding OCID, if present in the payload, will be
+# retrieved and added.
 
-include_all_ocids = eval(os.getenv('INCLUDE_TAGS_FOR_ALL_OCIDS', "True"))
-
-# To target specific OCID keys, configure TARGET_OCID_KEYS with a comma-separated list of
-# OCID keys (l-values).  The tags for each corresponding OCID, if present in the payload, will be
-# retrieved and added.  The default value is a sampling of some well-known OCID keys but is by no means exhaustive.
-
-target_ocid_keys = os.getenv('TARGET_OCID_KEYS', 'compartmentId vcnId subnetId vnicId vnicsubnetocid').split(' ')
-
-# The default for TARGET_OCID_KEYS above is a superset of keys that will never all be present in any one
-# event.  If False, TARGET_OCID_KEYS_WARN_IF_NOT_FOUND suppress log warnings for keys not found in
-# the event payload.
-
-target_ocid_keys_warn_if_not_found = eval(os.getenv('TARGET_OCID_KEYS_WARN_IF_NOT_FOUND', "False"))
+target_ocid_keys = os.getenv('TARGET_OCID_KEYS', None)
+target_ocid_keys = None if target_ocid_keys is None else re.split(' |,|, ', target_ocid_keys)
 
 # The TAG_ASSEMBLY_KEY is the l-value under which the tag collection will be added to the event payload.
 
@@ -96,12 +87,12 @@ def add_tags_to_payload(payload):
 
     if isinstance(payload, list):
         for event in payload:
-            tag_collection = assemble_event_tags(event)
-            position_tags_on_event(event, tag_collection)
+            tag_assembly = build_tag_assembly(event)
+            position_tags_on_event(event, tag_assembly)
 
     else:
-        tag_collection = assemble_event_tags(payload)
-        position_tags_on_event(payload, tag_collection)
+        tag_assembly = build_tag_assembly(payload)
+        position_tags_on_event(payload, tag_assembly)
 
 
 def position_tags_on_event(event, tag_collection: dict):
@@ -133,15 +124,15 @@ def position_tags_on_event(event, tag_collection: dict):
     event[tag_assembly_key] = tag_collection
 
 
-def assemble_event_tags(event: dict):
+def build_tag_assembly(event: dict):
     """
     returns: assembly of all OCID tags as one dictionary (per config rules).
     """
 
     tag_assembly = {}
 
-    tuple_list = assemble_ocid_list(event)
-    for target_ocid in tuple_list:
+    ocid_list = build_ocid_lookup_list(event)
+    for target_ocid in ocid_list:
         if tag_assembly.get(target_ocid) is not None:
             continue
 
@@ -152,29 +143,33 @@ def assemble_event_tags(event: dict):
     return tag_assembly
 
 
-def assemble_ocid_list(dictionary: dict, ocid_list=None):
+def build_ocid_lookup_list(dictionary: dict, ocid_lookup_list=None):
     """
-    recursively assembles a list of OCIDS from the payload dictionary based on configuration rules.
+    recursively assembles a list of OCIDS to lookup from the payload dictionary based on configuration rules.
     """
 
-    if ocid_list is None:
-        ocid_list = []
+    if ocid_lookup_list is None:
+        ocid_lookup_list = []
 
     for key, value in dictionary.items():
         if isinstance(value, dict):
-            assemble_ocid_list(dictionary=value, ocid_list=ocid_list)
+            build_ocid_lookup_list(dictionary=value, ocid_lookup_list=ocid_lookup_list)
 
         elif isinstance(value, list):
             for entry in value:
                 if isinstance(entry, dict):
-                    assemble_ocid_list(dictionary=entry, ocid_list=ocid_list)
+                    build_ocid_lookup_list(dictionary=entry, ocid_lookup_list=ocid_lookup_list)
 
         else:
-            if isinstance(value, str) and value.startswith('ocid1.'):
-                if include_all_ocids is True or key in target_ocid_keys:
-                    ocid_list.append(value)
+            # if the value is an ocid, add to the lookup list if:
+            # a) there are no target_ocid_keys specified or
+            # b) there are target_ocid_keys and this is one of them
 
-    return ocid_list
+            if isinstance(value, str) and value.startswith('ocid1.'):
+                if target_ocid_keys is None or key in target_ocid_keys:
+                    ocid_lookup_list.append(value)
+
+    return ocid_lookup_list
 
 
 @lru_cache(maxsize=5000)
