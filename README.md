@@ -165,8 +165,8 @@ For example, look at this sample OCI Monitoring Metric event payload:
         ]
     }
 
-If we want the tags deposited within the `metadata` object, setting `TAG_POSITION_KEY` == `metadata`, which will
-add the tags there:
+If we want the tags deposited within the `metadata` object, setting `TAG_POSITION_KEY` == `metadata`, the Function
+will position the tags there:
 
     {
         "namespace": "oci_vcn",
