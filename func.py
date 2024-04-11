@@ -117,8 +117,6 @@ def position_tags_on_event(event, tag_collection: dict):
             elif isinstance(position, list):
                 position.append({tag_assembly_key: tag_collection})
                 return
-        else:
-            raise RuntimeError(f'tag position noy found in payload / {tag_position_key}')
 
     # otherwise, default behavior is to add the collection
     # at the root of the payload.

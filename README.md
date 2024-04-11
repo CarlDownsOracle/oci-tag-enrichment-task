@@ -116,14 +116,14 @@ You should see the same payload returned with `tags` collection added ... someth
 Here are the supported configuration parameters.  See below for examples of what they do. The defaults are fine 
 for most use cases.
 
-| Environment Variable     |          Default          | Purpose                                                                                                                                                                                                                                                                                                     |
-|--------------------------|:-------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| TARGET_OCID_KEYS         |                           | By default, tags are assembled for all OCIDs in the event payload.  To select only specific ones, simply provide a comma-separated list of OCID keys (l-values) in the JSON.                                                                                                                                |
-| INCLUDE_TAG_TYPES        | freeform, defined, system | By default, `'freeform'`, `'defined'` and `'system'` tag will be included when found. See [OCI Tagging Overview](https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm).                                                                                                          |
-| INCLUDE_EMPTY_TAGS_TYPES |           False           | By default, empty tag type collections are not included.                                                                                                                                                                                                                                                    |
-| TAG_ASSEMBLY_KEY         |           tags            | The `TAG_ASSEMBLY_KEY` is the dictionary key `l-value` used to add the tag collection to the event JSON payload.                                                                                                                                                                                            |
-| TAG_POSITION_KEY         |                           | If empty (the default), the tag collection is placed at the root of the event JSON.  Otherwise, you can set `TAG_POSITION_KEY` to an existing payload `l-value` to place the tag collection there. Note: If the `l-value` is not found or the `r-value` is not an object or an array, an exception is thrown. |
-| LOGGING_LEVEL            |           INFO            | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                                                                             |
+| Environment Variable     |          Default          | Purpose                                                                                                                                                                                            |
+|--------------------------|:-------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| TARGET_OCID_KEYS         |                           | By default, tags are assembled for all OCIDs in the event payload.  To select only specific ones, simply provide a comma-separated list of OCID keys (l-values) in the JSON.                       |
+| INCLUDE_TAG_TYPES        | freeform, defined, system | By default, `'freeform'`, `'defined'` and `'system'` tag will be included when found. See [OCI Tagging Overview](https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm). |
+| INCLUDE_EMPTY_TAGS_TYPES |           False           | By default, empty tag type collections are not included.                                                                                                                                           |
+| TAG_ASSEMBLY_KEY         |           tags            | The `TAG_ASSEMBLY_KEY` is the dictionary key `l-value` used to add the tag collection to the event JSON payload.                                                                                   |
+| TAG_POSITION_KEY         |                           | If empty (the default), the tag collection is placed at the root of the event JSON.  Otherwise, you can set `TAG_POSITION_KEY` to an existing payload `l-value` to place the tag collection there. |
+| LOGGING_LEVEL            |           INFO            | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                    |
 
 
 ### TARGET_OCID_KEYS
@@ -207,9 +207,8 @@ will position the tags there:
         ]
     }
 
-### Important TAG_POSITION_KEY Caveat
-
-If the `TAG_POSITION_KEY` is defined and that `l-value` is not present in the payload, an error is thrown.
+If the `TAG_POSITION_KEY` is defined and that `l-value` is not present in the payload, the Function
+simply places the tag collection at the root of the payload.
 
 
 ## Service Connector Setup
