@@ -11,18 +11,18 @@ and metrics to [Logging](https://docs.oracle.com/en-us/iaas/Content/Logging/home
 [Monitoring](https://docs.oracle.com/en-us/iaas/Content/Monitoring/home.htm) 
 because including tags would be expensive, adversely impacting storage and bandwidth usage.
 
-### Observability Correlation Use Cases
+### Common Use Cases
 
 Many customer use cases, however, call for a way to map log and metric events to business objects so 
-that downstream Observability systems can perform required correlative analyses.  Thus, they need
+that downstream systems (such as a SIEM) can build correlations.  Thus, they need
 events with tags included.
 
 ### Solution Brief
 
 This sample solves that problem through the use of
 [OCI Service Connector Function Tasks](https://docs.oracle.com/en-us/iaas/Content/connector-hub/overview.htm). 
-The sample Function Task "enriches" an event by selectively retrieving and adding tags to each as 
-the Service Connector processes them. 
+The sample Function Task can be used to "enrich" event payloads by retrieving and adding `freeform`, `defined` 
+and/or `system` tags associated with the Oracle Cloud IDs (OCIDs) present in the payload.  
 
 See [OCI Service Connector Overview](https://docs.oracle.com/en-us/iaas/Content/connector-hub/overview.htm) for 
 a thorough explanation of Functions Tasks.
