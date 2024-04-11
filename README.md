@@ -82,14 +82,14 @@ This task supports a number of configuration options (see below).
 
 Once you have the Fn Application created, Function built and deployed to the Application, we can perform some tests
 from the cloud shell without having to set up a Service Connector. Using the OCI Console, add a `freeform` tag to 
-the VCN subnets you created for the Fn Application.  An example freeform tag:
+the VCN subnets you created for the Fn Application.  An example freeform tag you could add:
 
     "app-test": "working" 
 
 Invoke the function by passing it a simulated event payload that looks like this:
 
     {
-      "id": "your-vcn-id-goes-here"
+      "id": "your-vcn-subnet-ocid-goes-here"
     }
 
 Now let's invoke the Function from the directory in cloud shell where the function code is located, 
