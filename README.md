@@ -78,49 +78,31 @@ Allow dynamic-group tag-enrichment-dynamic-group to manage compartments in compa
 See the [Quick Start guide on OCI Functions](http://docs.oracle.com/en-us/iaas/Content/Functions/Tasks/functionsquickstartguidestop.htm) reference.
 This task supports a number of configuration options (see below).
 
-
-### Selecting Target OCIDs
-
-The default behavior is to collect and attach all tags for all OCIDs present in an event payload.
-If you only want to target specific OCID keys to retrieve, define the list 
-of `TARGET_OCID_KEYS` to search for in the event payloads. Set the `TARGET_OCID_KEYS` to a comma-separated 
-list of OCID keys (l-values in the payload) to include.
-
-
-### What about Nested Payloads?
-
-Target OCIDs can exist anywhere in the event payload, and will be found regardless of nested position.
-
-### What about Performance?
-
-The results are cached when retrieved within the Function container using an LRU cache.
-
-### Function Testing
+### Testing the Function by Invoking it Locally
 
 Once you have the Fn Application created, Function built and deployed to the Application, we can perform some tests
-from the cloud shell without having to set up a Service Connector.
-
-Add a freeform tag to the VCN you created for the Fn Application.  An example freeform tag:
+from the cloud shell without having to set up a Service Connector. Using the OCI Console, add a `freeform` tag to 
+the VCN subnets you created for the Fn Application.  An example freeform tag:
 
     "app-test": "working" 
 
-We will invoke the function by passing it a simulated event payload that looks like this:
+Invoke the function by passing it a simulated event payload that looks like this:
 
     {
-      "vcnId": "ocid1.vcn.oc1.iad...."
+      "id": "your-vcn-id-goes-here"
     }
 
 Now let's invoke the Function from the directory in cloud shell where the function code is located, 
 passing in a simulated 'event' payload like so:
 
-    echo -n '{"vcnId":"your-vcn-id-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+    echo -n '{"id":"your-vcn-subnet-ocid-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
 You should see the same payload returned with `tags` collection added ... something like this:
 
     {
-        "vcnId": "ocid1.vcn.oc1.iad....",
+        "id": "ocid1.subnet.oc1.iad....",
         "tags": {
-            "ocid1.vcn.oc1.iad....": {
+            "ocid1.subnet.oc1.iad....": {
                 "freeform": {
                     "VCN": "VCN-2024-03-01T20:57:32"
                     "app-test": "working"
@@ -129,62 +111,105 @@ You should see the same payload returned with `tags` collection added ... someth
         }
     }
 
-### Changing the Assembly Key
+## Function Configuration
 
-The l-value _tags_ can be changed.  Simply set `TAG_ASSEMBLY_KEY` to name it whatever you like.
+Here are the supported configuration parameters.  See below for examples of what they do. The defaults are fine 
+for most use cases.
 
-### Changing Placement in the Payload 
+| Environment Variable     |          Default          | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|--------------------------|:-------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| TARGET_OCID_KEYS         |                           | By default, tags are assembled for all OCIDs in the event payload.  To select only specific ones, simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The `vcnId` key used in the Function Testing section would be an l-value.                                                                                                                                                                                                                                                                              |
+| INCLUDE_TAG_TYPES        | freeform, defined, system | By default, `'freeform'`, `'defined'` and `'system'` tag will be included when found.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| INCLUDE_EMPTY_TAGS_TYPES |           False           | By default, empty tag type collections are not included.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| TAG_ASSEMBLY_KEY         |           tags            | The `TAG_ASSEMBLY_KEY` is the dictionary key `l-value` used to add the tag collection to the event JSON payload.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| TAG_POSITION_KEY         |                           | If empty (the default), the tag collection is placed at the root of the event JSON.  Otherwise, you can set `TAG_POSITION_KEY` to an existing payload `l-value` to place the tag collection there.  If the `l-value` is found in the event and the `r-value` is a dictionary, the collection is added there using `TAG_ASSEMBLY_KEY` as the collection key.  If the `l-value` is an array, then the tag collection is appended to the array.  If the `l-value` is not found or is not an object or an array, an exception is thrown. |
+| LOGGING_LEVEL            |           INFO            | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
-If you want to position the tag collection somewhere other than at the top, you can set `TAG_POSITION_KEY`.
-If the `TAG_POSITION_KEY` position in your payload is a dictionary, the tag collection will be 
-added using `TAG_ASSEMBLY_KEY` as the position.  
 
-As an example, let's assume we have defined function configuration `TAG_POSITION_KEY` as `"compliance"`.   Now simulate
-a call with a payload that has that position in it, declared as an object:
+### TARGET_OCID_KEYS
 
-    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": {}}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+The default behavior is to collect and attach all tags for all OCIDs present in an event payload.
+If you only want to target specific OCID keys to retrieve, define the list 
+of `TARGET_OCID_KEYS` to search for in the event payloads. Set the `TARGET_OCID_KEYS` to a comma-separated 
+list of OCID keys (l-values in the payload) to include. Target OCIDs can exist _anywhere_ in the event payload, 
+and will be found regardless of nested position.
 
-So, this is what you get back when positioning within an existing object:
-    
-    {
-        "vcnId": "ocid1.vcn.oc1.iad....",
-        "compliance": {
-            "tags": {
-                "ocid1.vcn.oc1.iad....": {
-                    "freeform": {
-                        "VCN": "VCN-2024-03-01T20:57:32"
-                        "app-test": "working"
-                    }
-                }
-            }
-        }
-    }
 
-If the `TAG_POSITION_KEY` position is an array, then the tag collection is added as an object to the list. 
-Here is an example of positioning within as existing array:
+###  TAG_ASSEMBLY_KEY
 
-    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": ["something"]}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+The l-value `"tags"` `l-value` can be customized.  Simply set `TAG_ASSEMBLY_KEY` to name it whatever you like.
 
-... yields this result:
+###  TAG_POSITION_KEY
+
+If you want to position the tag collection somewhere other than at the payload root, you can set `TAG_POSITION_KEY`.
+Foe example, look at this sample OCI Monitoring Metric event payload:
 
     {
-        "vcnId": "ocid1.vcn.oc1.iad....",
-        "compliance": [
-            "something",
+        "namespace": "oci_vcn",
+        "resourceGroup": null,
+        "compartmentId": "ocid1.compartment.oc1..",
+        "name": "VnicEgressDropsConntrackFull",
+        "dimensions": {
+            "resourceId": "ocid1.subnet.oc1.phx...",
+        },
+        "metadata": {
+            "displayName": "Egress Packets Dropped by Full Connection Tracking Table",
+            "unit": "packets"
+        },
+        "datapoints": [
             {
-                "tags": {
-                    "ocid1.vcn.oc1.iad....": {
-                        "freeform": {
-                            "VCN": "VCN-2024-03-01T20:57:32"
-                            "app-test": "working"
-                        }
-                    }
-                }
+                "timestamp": 1652196492000,
+                "value": 0.0,
+                "count": 1
             }
         ]
     }
 
-If the `TAG_POSITION_KEY` position l-value is missing from the payload, an error is thrown.
+If we want the tags deposited within the `metadata` object, setting `TAG_POSITION_KEY` == `metadata`, which will
+add the tags there:
+
+    {
+        "namespace": "oci_vcn",
+        "resourceGroup": null,
+        "compartmentId": "ocid1.compartment.oc1..",
+        "name": "VnicEgressDropsConntrackFull",
+        "dimensions": {
+            "resourceId": "ocid1.subnet.oc1.phx...",
+        },
+        "metadata": {
+            "displayName": "Egress Packets Dropped by Full Connection Tracking Table",
+            "unit": "packets",
+            "tags": {
+                "ocid1.compartment.oc1...": {
+                    "freeform": {
+                        "enrichment": "True",
+                        "testing": "True"
+                    },
+                    "defined": {
+                        "OracleInternalReserved": {
+                            "OwnerEmail": "foo@bar.com"
+                        }
+                    }
+                },
+                "ocid1.subnet.oc1.phx....": {
+                    "freeform": {
+                        "VCN": "VCN-2024-03-01T20:57:32"
+                    }
+                }
+            }
+        },
+        "datapoints": [
+            {
+                "timestamp": 1652196492000,
+                "value": 0.0,
+                "count": 1
+            }
+        ]
+    }
+
+### Important TAG_POSITION_KEY Caveat
+
+If the `TAG_POSITION_KEY` is defined and that `l-value` is not present in the payload, an error is thrown.
 
 
 ## Service Connector Setup
@@ -249,19 +274,6 @@ the cache should not be an issue.  However, you can clear the cache by causing t
 the Function container.  The easiest way to do that is to change a Fn Application configuration parameter.
 
 ----
-
-## Function Configuration Options
-
-Here are the supported variables.  The defaults are fine for most use cases.
-
-| Environment Variable     |          Default          | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|--------------------------|:-------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| TARGET_OCID_KEYS         |                           | By default, tags are assembled for all OCIDs in the event payload.  To select only specific ones, simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The `vcnId` key used in the Function Testing section would be an l-value.                                                                                                                                                                                                                                                                              |
-| INCLUDE_TAG_TYPES        | freeform, defined, system | By default, `'freeform'`, `'defined'` and `'system'` tag will be included when found.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| INCLUDE_EMPTY_TAGS_TYPES |           False           | By default, empty tag type collections are not included.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| TAG_ASSEMBLY_KEY         |           tags            | The `TAG_ASSEMBLY_KEY` is the dictionary key `l-value` used to add the tag collection to the event JSON payload.                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| TAG_POSITION_KEY         |                           | If empty (the default), the tag collection is placed at the root of the event JSON.  Otherwise, you can set `TAG_POSITION_KEY` to an existing payload `l-value` to place the tag collection there.  If the `l-value` is found in the event and the `r-value` is a dictionary, the collection is added there using `TAG_ASSEMBLY_KEY` as the collection key.  If the `l-value` is an array, then the tag collection is appended to the array.  If the `l-value` is not found or is not an object or an array, an exception is thrown. |
-| LOGGING_LEVEL            |           INFO            | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 
 ## License
