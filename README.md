@@ -238,8 +238,8 @@ your policy to grant the Function resource appropriate access.
 
 ### Task function is not adding the target tags
 
-If you have `INCLUDE_TAGS_FOR_ALL_OCIDS` == `False` set, be sure you have the correct OCID `keys` (l-values) in 
-your `TARGET_OCID_KEYS` and that the delimiter is a comma with no spaces. Use the invocation logs to confirm that 
+If you have `TARGET_OCID_KEYS` set, be sure you have the correct OCID `keys` (l-values) in 
+your `TARGET_OCID_KEYS` and that the delimiter is a comma or space. Use the invocation logs to confirm that 
 the function is searching for the OCID key.   
 
 ### Task function is adding stale tags
