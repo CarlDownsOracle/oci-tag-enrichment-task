@@ -142,7 +142,7 @@ The l-value `"tags"` `l-value` can be customized.  Simply set `TAG_ASSEMBLY_KEY`
 ###  TAG_POSITION_KEY
 
 If you want to position the tag collection somewhere other than at the payload root, you can set `TAG_POSITION_KEY`.
-Foe example, look at this sample OCI Monitoring Metric event payload:
+For example, look at this sample OCI Monitoring Metric event payload:
 
     {
         "namespace": "oci_vcn",
