@@ -201,9 +201,6 @@ As a sample test scenario, let's write tag-enriched `VCN Flow Logs` to an `Objec
 **Configure VCN Flow Logs**
 * Enable VCN Flow logs for the VCN in `tag-enrichment-comp`.
 
-**Configure Task**
-* VCN Flow Logs include a `vnicsubnetocid` OCID key.  That exists by default in `TARGET_OCID_KEYS`.
-
 **Create Object Storage**
 * Create a bucket in `tag-enrichment-comp`.
 
